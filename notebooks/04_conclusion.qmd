@@ -1,0 +1,47 @@
+# Conclusion:
+
+
+## Limitations:
+
+## Future Work:
+
+
+## References:
+1) 
+
+## Appendix:
+1) Github Repository: https://github.com/AnhJoe/Real-Time_IoT_2022_Quantized_Auto_Encoder
+
+## Team Contributions:
+
+Joe Nguyen: 
+
+- Project research, report outline, intro, conclusion
+
+- EDA, MLP baseline
+
+- Proofreading
+
+- Quarto setup, report rendering
+
+Haesung Becker:
+
+- Project research
+
+- GCN + GraphSage
+
+- Proofreading
+
+- Github repo setup
+
+Jared Lyon:
+
+- Evaluation pipeline
+
+- Plots + analysis
+
+- Proofreading
+
+- Github repo cleanup
+
+We worked closely together to recommend datasets and project ideas related to our interests. After initial inspections, we voted and collectively decided on this experiment and its scope.

@@ -1,30 +1,28 @@
 # Spatial Multi-Task Graph Neural Network for U.S. County Social Vulnerability Modeling
 
 - [Spatial Multi-Task Graph Neural Network for U.S. County Social Vulnerability Modeling](#spatial-multi-task-graph-neural-network-for-us-county-social-vulnerability-modeling)
-  - [Project Overview](#project-overview)
-  - [Problem Statement](#problem-statement)
+  - [Project Overview:](#project-overview)
+  - [Problem Statement:](#problem-statement)
+  - [Scope:](#scope)
   - [Dataset Description](#dataset-description)
-  - [Repository Structure](#repository-structure)
-  - [Setup Instructions](#setup-instructions)
-  - [Required Dependencies](#required-dependencies)
-  - [Data Download Instructions](#data-download-instructions)
-  - [Preprocessing](#preprocessing)
-  - [Training the Models](#training-the-models)
-  - [Evaluation](#evaluation)
-  - [Experimental Design](#experimental-design)
-  - [Limitations](#limitations)
-  - [Scope](#scope)
-  - [Expected Contributions](#expected-contributions)
-  - [Team Contributions](#team-contributions)
-  - [Guidelines:](#guidelines)
+  - [Repository Structure:](#repository-structure)
+  - [Setup Instructions:](#setup-instructions)
+  - [Required Dependencies:](#required-dependencies)
+  - [Data Download Instructions:](#data-download-instructions)
+  - [Implementation Guide:](#implementation-guide)
+  - [Limitations:](#limitations)
+  - [Expected Contributions:](#expected-contributions)
+  - [Meet The Team:](#meet-the-team)
 
-## Project Overview
+
+## Project Overview:
 
 This project models U.S. county-level social vulnerability using spatial deep learning. We construct a county adjacency graph from U.S. Census Bureau geographic data and implement multi-task Graph Neural Networks (GNNs) to jointly predict multiple Social Vulnerability Index (SVI) themes.
 
 Unlike traditional tabular models that treat counties independently, our approach incorporates spatial relationships between neighboring counties to evaluate whether geographic structure improves predictive performance.
 
-## Problem Statement
+
+## Problem Statement:
 
 We aim to predict multiple SVI theme scores jointly for each U.S. county using:
 
@@ -42,10 +40,26 @@ We compare:
 
 We evaluate whether spatial modeling improves prediction of vulnerability themes relative to non-spatial baselines.
 
+
+## Scope:
+
+We focus on:
+
+- Three architectures (MLP, GCN, GraphSAGE)
+
+- Multi-task regression
+
+- Spatial adjacency graph construction
+
+- Rigorous evaluation and ablation
+
+
 ## Dataset Description
 
 1. Social Vulnerability Data (2022): https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html 
+
 Download Settings: 
+
 - Year = 2022
 
 - Geography = United States
@@ -96,42 +110,29 @@ Edges: Counties that share a geographic border
 
 Graph construction is performed using GeoPandas and spatial geometry operations.
 
-## Repository Structure
+
+## Repository Structure:
 project/
 │
 ├── data/
 │   ├── raw/
 │   ├── processed/
-│
+│   └── artifacts/
 ├── notebooks/
-│   └── demo.ipynb
-│
+│   ├── 01_eda.ipynb
+│   ├── 02_baseline_mlp.ipynb
+│   ├── 03_gcn.ipynb
+│   ├── 01_eda.qmd
+│   ├── 02_baseline_mlp.qmd
+│   ├── 03_gcn.qmd
 ├── src/
-│   ├── models/
-│   │   ├── mlp.py
-│   │   ├── gcn.py
-│   │   └── graphsage.py
-│   │
-│   ├── training/
-│   │   ├── train.py
-│   │   └── trainer.py
-│   │
-│   ├── evaluation/
-│   │   ├── metrics.py
-│   │   └── analysis.py
-│   │
-│   ├── graph/
-│   │   └── build_graph.py
-│   │
-│   └── utils/
-│
-├── experiments/
-├── configs/
+│   ├── 
 ├── requirements.txt
 ├── README.md
-└── report/
+└── outputs/report
 
-## Setup Instructions
+
+## Setup Instructions:
 
 - Clone Repo:
     - git clone <repo-url>
@@ -142,173 +143,77 @@ project/
     - source venv/bin/activate
     - pip install -r requirements.txt
 
-## Required Dependencies
 
-- Python 3.10+
-
-- PyTorch
-
-- PyTorch Geometric
-
-- GeoPandas
-
-- Shapely
-
-- NetworkX
-
-- NumPy
-
-- Pandas
-
-- Scikit-learn
-
-- Matplotlib
-
-- Seaborn
-
+## Required Dependencies:
 All dependencies are listed in requirements.txt.
 
-## Data Download Instructions
+
+## Data Download Instructions:
 
 1. Social Vulnerability Dataset
 
-Place the SVI dataset in:
+    Download from the ATSDR:
 
-- data/raw/
+    https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html 
 
-Ensure it includes:
+    Download Settings: 
 
-- County FIPS codes
-  
-- Theme percentile scores
-  
-- Socioeconomic feature columns
+    - Year = 2022
 
-1. Census TIGER/Line County Shapefile (2022)
+    - Geography = United States
 
-Download from the U.S. Census Bureau TIGER/Line portal:
+    - Geography Type = Counties
 
-https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    - File Type = CSV file
 
-Download:
+    Place the SVI dataset in:
 
-- tl_2022_us_county.zip
+    - data/raw/
 
-Unzip and place contents in:
+2. Census TIGER/Line County Shapefile (2022)
 
-- data/raw/tiger/
+    Download from the U.S. Census Bureau TIGER/Line portal:
 
-## Preprocessing
+    https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
 
-Run:
+    Download:
 
-- python src/graph/build_graph.py
+    - tl_2022_us_county.zip
 
+    Unzip and place contents in:
 
-This will:
-
-- Load shapefiles
-  
-- Construct adjacency graph
-  
-- Merge SVI features
-  
-- Save processed graph object
-
-Output:
-
-- data/processed/graph_data.pt
-
-## Training the Models
-
-Train MLP Baseline
-
--python src/training/train.py --model mlp
-
-Train GCN
-
-- python src/training/train.py --model gcn
-
-Train GraphSAGE
-
-- python src/training/train.py --model graphsage
+    - data/raw/
 
 
-Training logs and metrics are saved to:
+## Implementation Guide: 
+All instructions are provided within each notebooks to preprocess, train, and evaluate.
 
-- experiments/
+1) EDA & Preprocessing (01_eda.ipynb)
+   
+2) Model Training:
 
-## Evaluation
+   - Train & Evaluate MLP Baseline (02_baseline_mlp.ipynb)
 
-Models are evaluated using:
+   - Train & Evaluate GCN + GraphSAGE (03_gcn.ipynb)
 
-- Mean Squared Error (MSE)
-  
-- Mean Absolute Error (MAE)
-  
-- R²
-  
-Spatial ablation experiments include:
-  
-- Removing graph edges
-  
-- Random graph rewiring
-  
-- Feature group ablation
+3) Processed data are saved to data/processed
+   
+4) Evaluation Metrics are saved to data/artifacts/
+   
+5) Quarto for reporting rendering:
 
-Evaluation results are saved as:
+   - Install quarto from https://quarto.org/docs/download/index.html
 
-- CSV metric tables
-  
-- Learning curve plots
-  
-- Comparative performance charts
+   - Quarto install tinytex
+
+   - cd to notebooks/ then run `quarto convert *.ipynb` to convert to qmd (repeat for each ipynb editted)
+
+   - cd back to root and run `quarto render` to render from _quarto.yml
+
+6) All quarto reports are saved to outputs/reports/
 
 
-## Experimental Design
-
-We perform:
-
-- Baseline vs. Spatial model comparison
-  
-- Hyperparameter tuning
-  
-- Multi-task loss balancing
-  
-- Spatial ablation studies
-  
-- Regional error analysis
-  
-- Reproducing Results
-
-To reproduce main experiments:
-
-- python src/training/train.py --config configs/final_config.yaml
-
-
-Expected outputs:
-
-- Trained model weights
-  
-- Performance metrics
-  
-- Training curves
-  
-- Evaluation tables
-
-Demo Notebook
-
-notebooks/demo.ipynb provides:
-
-- Step-by-step walkthrough
-  
-- Graph construction visualization
-  
-- Model inference example
-  
-- Sample evaluation results
-
-## Limitations
+## Limitations:
 
 - Cross-sectional (single-year) data
 
@@ -320,146 +225,22 @@ notebooks/demo.ipynb provides:
 
 This project is predictive and does not claim causal inference.
 
-## Scope
 
-We focus on:
-
-- Three architectures (MLP, GCN, GraphSAGE)
-- 
-- Multi-task regression
-- 
-- Spatial adjacency graph construction
-- 
-- Rigorous evaluation and ablation
-
-We do not include:
-
-- Temporal modeling
-
-- Advanced causal inference
-
-- Large-scale hyperparameter sweeps
-
-- National-scale simulation studies
-
-## Expected Contributions
+## Expected Contributions:
 
 - Demonstration of spatial deep learning for public policy modeling
-- 
+
 - Quantitative comparison of spatial vs. non-spatial methods
-- 
+
 - Multi-task learning architecture design
-- 
+
 - Reproducible research pipeline
 
-## Team Contributions
+
+## Meet The Team:
 
 Joe Nguyen
 
 Haesung Becker
 
 Jared Lyon
-
-## Guidelines:
-
-This project is intended to give you hands-on experience in:
-- Formulating a concrete ML problem
-
-- Designing appropriate models
-
-- Implementing the solution
-
-- Training and debugging models
-
-- Evaluating performance rigorously
-
-- Communicating results clearly
-
-- Expected Level of Sophistication
-
-The project must demonstrate sufficient technical depth.
-
-❌ Out of Scope:
-
-- Simply running a sklearn model
-
-- Using off-the-shelf decision trees, e.g., random forest, XGBoosting etc without meaningful modification or analysis
-
-✅ Expected Level:
-
-- Develop and implement deep learning models using PyTorch
-
-- Design custom architectures, loss functions, or training strategies
-
-- Perform thoughtful experimentation and ablation studies
-
-- Analyze results carefully
-
-- You are encouraged to explore modern techniques such as neural nets, CNNs, RNNs, transformers, deep generative models, graph neural nets, LLMs. 
-
-Use of Open-Source Code:
-
-- You do not need to build everything from scratch.
-
-- You must clearly document what code is borrowed.
-
-- You must demonstrate meaningful contribution beyond simply running someone else’s code.
-
-Submission Requirements:
-
-(A) Final Written Report: a single write-up document in PDF, approximately 4-6 pages long
-
-- Problem definition and motivation: describe the problem you chose and the methods you used to address it
-
-- Related work
-
-- Dataset description
-
-- Model design
-
-- Training procedure
-
-- Evaluation metrics
-
-- Experimental results
-
-- Analysis and discussion: 
-    - Which model(s) you tried, how you trained them, how you selected any parameters they might require, and how they performed on the test data
-
-    - Tables of performance of different approaches, or plots of performance used to perform model selection (i.e., parameters that control complexity)
-
-- Limitations and future work
-
-(B) GitHub Repository:
-
-- A README.md file that clearly explains:
-
-- Project overview
-
-- Setup instructions
-
-- Required dependencies
-
-- How to train the model
-
-- How to evaluate the model
-
-- Expected outputs
-
-Clear instructions on:
-
-- Where to download the dataset
-
-- How to preprocess the data
-
-- How to reproduce your results
-
-- A small sample dataset (if the real dataset is private)
-
-- A demo notebook (e.g., Jupyter notebook) that allows us to run the code, test the model, and reproduce key results
-
-(C) In the last paragraph of the report, please write down the names of your team members and contributions from each member.
-
-- Try to describe to the best of your ability who was responsible for which aspects (which learners, etc.), and how the team as a whole put the ideas together.
-
-- The report should be written like a typical conference paper. Do not simply copy/paste your code or results from your terminals.  Try to organize it and present it in a neat and coherent format in terms of tables and figures. 

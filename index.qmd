@@ -1,0 +1,36 @@
+# Abstract:
+
+# Introduction:
+- Problem definition and motivation: describe the problem you chose and the methods you used to address it
+
+## Project Objectives:
+
+
+## Related Work:
+
+## Data Summary:
+
+Source Link: 
+1) SVI 2022 County: https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html 
+2) 2022 TIGER County Lines: https://catalog.data.gov/dataset/tiger-line-shapefile-2022-nation-u-s-county-and-equivalent-entities/resource/1eb8657f-0109-4712-a714-32a569edc1ad? 
+
+## Model Design:
+
+## Training Procedure:
+
+## Experimental Results:
+
+## Analysis and Discussion:
+    - Which model(s) you tried, how you trained them, how you selected any parameters they might require, and how they performed on the test data
+
+    - Tables of performance of different approaches, or plots of performance used to perform model selection (i.e., parameters that control complexity)
+
+
+
+
+
+
+
+
+
+

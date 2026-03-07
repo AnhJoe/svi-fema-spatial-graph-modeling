@@ -1,57 +1,54 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.so
-
-# Virtual environments
-venv/
-.env/
+*.egg-info/
+dist/
+build/
 .venv/
-env/
+venv/
+.env
 
 # Jupyter
 .ipynb_checkpoints/
 
-# VSCode
+# VS Code
 .vscode/
 
-# MacOS
-.DS_Store
-
-# Logs
-*.log
-
-# Data (raw data should not be committed)
+# Data
 data/raw/
 data/processed/
+*.csv
 
-# Model weights
+# Artifacts
+data/artifacts/
+*.h5
+*.keras
 *.pt
-*.pth
-*.ckpt
+*.pkl
 
-# Experiment outputs
-experiments/
-runs/
-wandb/
+# Quarto / render outputs
+# outputs/reports/
+outputs/figures/
+outputs/tables/
+.quarto/
+**/*.quarto_ipynb
 
-# Cache
-.cache/
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.tex
 
-# Coverage
-.coverage
-htmlcov/
-
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-
-# Temporary files
-*.tmp
-*.bak
-
-# System files
+# OS
+.DS_Store
 Thumbs.db
+
+
