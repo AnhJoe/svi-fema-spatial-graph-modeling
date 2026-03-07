@@ -9,7 +9,11 @@
 ## Related Work:
 
 ## Data Summary:
-
+Data Sources:
+1. US County 2022 SVI dataset: https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html
+2. US County 2022 SVI dataset documentation: https://svi.cdc.gov/map25/data/docs/SVI2022Documentation_ZCTA.pdf 
+3. US County 2022 Tiger Line: https://catalog.data.gov/dataset/tiger-line-shapefile-2022-nation-u-s-county-and-equivalent-entities/resource/1eb8657f-0109-4712-a714-32a569edc1ad?
+4. US SVI Publications and Usecases / SUIT Database: https://www.atsdr.cdc.gov/place-health/php/svi/svi-publications.html
 Source Link: 
 1) SVI 2022 County: https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html 
 2) 2022 TIGER County Lines: https://catalog.data.gov/dataset/tiger-line-shapefile-2022-nation-u-s-county-and-equivalent-entities/resource/1eb8657f-0109-4712-a714-32a569edc1ad? 
