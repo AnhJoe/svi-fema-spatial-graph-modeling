@@ -1,34 +1,30 @@
 # Core scientific stack
-numpy==1.26.4
-pandas==2.2.2
-scipy==1.13.1
+numpy
+pandas
+scikit-learn
+scipy
+statsmodels
 
 # Visualization
-matplotlib==3.8.4
-seaborn==0.13.2
+matplotlib
+seaborn
 
-# Machine learning utilities
-scikit-learn==1.4.2
-tqdm==4.66.4
+# ML / Deep Learning
+tensorflow
+torch
 
-# PyTorch
-torch==2.2.2
-torchvision==0.17.2
-torchaudio==2.2.2
+# Data formats
+pyarrow
 
-# PyTorch Geometric
-torch-geometric==2.5.3
+# Utilities
+tqdm
+pyyaml
 
-# Graph + spatial processing
-networkx==3.3
-geopandas==0.14.4
-shapely==2.0.4
-pyproj==3.6.1
-fiona==1.9.6
+# Graph & Geo
+geopandas
+libpysal
 
-# Configuration + logging
-pyyaml==6.0.1
-
-# Notebook support
-jupyter==1.0.0
-ipykernel==6.29.4
+# Install quarto for report rendering
+# https://quarto.org/docs/get-started/
+# Quarto requires tinytext
+# Run: quarto install tinytex
