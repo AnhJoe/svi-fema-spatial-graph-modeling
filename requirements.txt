@@ -13,6 +13,7 @@ seaborn
 # ML / Deep Learning
 tensorflow
 torch
+torch-geometric
 
 # Data formats
 pyarrow
