@@ -28,6 +28,8 @@ To incorporate geographic context, counties are represented as nodes in a spatia
 
 Finally, the project compares **tabular deep learning and graph-based models within a unified regression framework** to assess the role of spatial connectivity in disaster vulnerability modeling and determine whether geographic structure provides predictive signal beyond the socioeconomic indicators themselves.
 
+Report Summary: https://github.com/AnhJoe/svi-fema-spatial-graph-modeling/releases/tag/v1.2
+
 Full Report: https://github.com/AnhJoe/svi-fema-spatial-graph-modeling/releases/tag/v1.1
 
 # Abstract
