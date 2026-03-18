@@ -6,6 +6,20 @@ jupyter: python3
 
 
 ```{python}
+import os
+import sys
+
+# Check if running in Google Colab
+if 'google.colab' in sys.modules:
+    # Clone your repository if it hasn't been cloned yet
+    if not os.path.exists('/content/svi-fema-spatial-graph-modeling'):
+        !git clone https://github.com/AnhJoe/svi-fema-spatial-graph-modeling.git
+    
+    # Change working directory to the project root
+    os.chdir('/content/svi-fema-spatial-graph-modeling')
+```
+
+```{python}
 #| output: false
 
 import sys
@@ -77,18 +91,22 @@ plt.rcParams.update(
 ```{python}
 #| output: false
 
-# Load processed data, scalers, and artifacts
-processed_dir = Path("../data/processed")
-artifacts_dir = Path("../data/artifacts")
+# Data directories
+RAW_DATA_DIR = root / "data" / "raw"
+ARTIFACTS_DIR = root / "data" / "artifacts"
+PROCESSED_DATA_DIR = root / "data" / "processed"
+SVI_PATH = RAW_DATA_DIR / "SVI_2018_US_county.csv"
+SHAPE_PATH = RAW_DATA_DIR / "tl_2018_us_county/tl_2018_us_county.shp"
+
 
 # Load county geometries (used later for graph construction and spatial diagnostics)
-geo_df = gpd.read_file(processed_dir / "svi_counties.gpkg", layer="counties").copy()
+geo_df = gpd.read_file(PROCESSED_DATA_DIR / "svi_counties.gpkg", layer="counties").copy()
 
 # Ensure FIPS formatting is consistent
 geo_df["FIPS"] = geo_df["FIPS"].astype(str).str.zfill(5)
 
 # Load processed split arrays
-data = np.load(processed_dir / "svi_processed_splits.npz", allow_pickle=True)
+data = np.load(PROCESSED_DATA_DIR / "svi_processed_splits.npz", allow_pickle=True)
 
 # Log feature pipeline
 Xlog_train_scaled = data["Xlog_train_scaled"]
@@ -106,8 +124,8 @@ fips_val = pd.Series(data["fips_val"]).astype(str).str.zfill(5).to_numpy()
 fips_test = pd.Series(data["fips_test"]).astype(str).str.zfill(5).to_numpy()
 
 # Load scalers (needed to invert predictions later)
-scaler_Xlog = joblib.load(processed_dir / "scaler_Xlog.pkl")
-scaler_ylog = joblib.load(processed_dir / "scaler_ylog.pkl")
+scaler_Xlog = joblib.load(PROCESSED_DATA_DIR / "scaler_Xlog.pkl")
+scaler_ylog = joblib.load(PROCESSED_DATA_DIR / "scaler_ylog.pkl")
 
 # Concatenate all nodes in modeling order
 fips_all = np.concatenate([fips_train, fips_val, fips_test])
@@ -181,16 +199,14 @@ display(alignment_summary.style.hide(axis="index"))
 #| output: false
 
 # Load best MLP results
-mlp_config_df = pd.read_csv(artifacts_dir / "final_mlp_results.csv", index_col=0)
+mlp_config_df = pd.read_csv(ARTIFACTS_DIR / "final_mlp_results.csv", index_col=0)
 
 display(mlp_config_df.T)
 ```
 
 ## Model Motivation
 
-The multilayer perceptron (MLP) experiments established a strong non-spatial baseline using the log-transformed SVI indicators. The best MLP achieved a test performance of **RMSE = 2.00** and **$R^2 = 0.57$**, indicating that county-level vulnerability indicators explain a meaningful but incomplete portion of the variation in FEMA assistance.
-
-However, counties are not independent observations. Neighboring counties often share regional socioeconomic conditions, infrastructure systems, hazard exposure, and policy contexts. Ignoring these spatial relationships may limit predictive performance. A graph-based model can explicitly incorporate this spatial dependence by representing **counties as nodes and geographic adjacency as edges**, allowing the model to combine local tabular features with information from nearby counties. The goal of the Graph Convolutional Network (GCN) stage is therefore to evaluate whether explicit spatial structure improves prediction compared to the tabular MLP baseline. Graph-based learning approaches provide a principled framework for modeling relationships in network-structured data (Hamilton, 2020).
+The GCN model treats counties as dependent observations with neighboring counties that share regional socioeconomic conditions, infrastructure systems, hazard exposure, and policy contexts. A graph-based model can explicitly incorporate this spatial dependence by representing counties as nodes and geographic adjacency as edges, allowing the model to combine local tabular features with information from nearby counties. The goal of the GCN is therefore to evaluate whether explicit spatial structure improves prediction compared to the tabular MLP baseline. Graph-based learning approaches provide a principled framework for modeling relationships in network-structured data (Hamilton, 2020).
 
 ## Model Formulation
 
@@ -228,49 +244,31 @@ $$
 
 and the model is trained by minimizing **mean squared error (MSE)** on the training nodes.
 
-## Baseline Configuration from the MLP
+## Training Configuration
 
-To ensure a fair comparison between model classes, the GCN stage preserves the same preprocessing and evaluation setup used in the MLP experiments. This ensures that any performance differences arise from the use of spatial structure rather than changes in the data pipeline.
+Following the similar preprocessing and evaluation setup as the MLP to ensure fair comparison, the GCN is trained using the following optimization and training settings prior to the ablation experiments:
 
-The main elements carried forward include:
+* **Feature representation:** only `log1p(ihp)`
+* **Number of graph convolution layers:** 1
+* **Hidden dimension:** 64
+* **Optimizer:** Adam
+* **Learning rate:** 1e-3
+* **Weight decay (L2 regularization):** 1e-5
+* **Dropout:** 0.1
+* **Maximum training epochs:** 300
+* **Early stopping patience:** 25 epochs
+* **Loss function:** Mean Squared Error (MSE)
+* **Activation function:** ReLU
 
-- Log-transformed feature matrix $X_{\log}$
-- Standardized input features using the training split scaler
-- Standardized log-transformed target variable
-- Fixed train / validation / test splits
-- Identical evaluation metrics: **RMSE** and **$R^2$**
-- Final comparison against the **saved best MLP configuration**
-
-### Baseline GCN Configuration
-
-The baseline graph convolutional network (GCN) uses the following initial hyperparameter configuration prior to the ablation experiments:
-
-- Number of graph convolution layers: 1  
-- Hidden dimension: 64  
-- Dropout: 0.1  
-- Optimizer: Adam  
-- Learning rate: $(1 \times 10^{-3})$  
-- Weight decay: $(1 \times 10^{-5})$  
-- Maximum training epochs: 300  
-- Early stopping patience: 25 epochs  
-
-These parameters provide a stable starting point for evaluating graph-based learning on the county adjacency network. Subsequent ablation experiments systematically vary architectural and regularization parameters to identify the best-performing configuration before final evaluation on the held-out test set.
-
-## GCN Ablation Plan
+## Ablation Plan
 
 The GCN experiments focus on three design dimensions: graph depth, hidden representation size, and regularization strength. Each dimension is varied independently while the others remain fixed, mirroring the ablation strategy used in the MLP stage.
 
-### Number of GCN Layers
-
-The first ablation varies the number of graph convolution layers (e.g., **1, 2, and 3 layers**). Each additional layer expands the spatial receptive field, allowing counties to incorporate information from increasingly distant neighbors. However, deeper graph models may suffer from **oversmoothing**, where node representations become overly similar (Hamilton, 2020).
-
-### Hidden Dimension
-
-The second ablation varies the hidden dimension (e.g., **16, 32, and 64 units**). This parameter controls the representational capacity of the model and determines how flexibly the GCN can combine county-level features with neighborhood information.
-
-### Regularization
-
-The final ablation focuses on regularization. Consistent with the MLP findings, weight decay is treated as the primary regularization mechanism, while dropout remains modest. Weight decay values such as **$0$, $10^{-5}$, and $10^{-3}$** are tested alongside dropout values such as **$0.0$, $0.1$, and $0.3$** to evaluate whether similar regularization patterns apply to spatial graph models.
+* **Number of GCN Layers:** 1, 2, 3
+* **Hidden dimension:** 32, 64, 128
+* **Regularization:**
+    * **Weight decay:** 0, 1e-5, 1e-3
+    * **Dropout:** 0, 0.1, 0.3
 
 ```{python}
 #| label: tbl-split-summary
@@ -382,6 +380,7 @@ assert y_t.shape[0] == X_t.shape[0]
 ```{python}
 #| label: tbl-gcn-baseline-config
 #| tbl-cap: Initial baseline configuration for the baseline GCN.
+#| output: false
 
 # Define baseline GCN configuration informed by the final MLP results
 base_gcn_config = {
@@ -487,6 +486,7 @@ plt.show()
 ```{python}
 #| label: tbl-gcn-baseline-results
 #| tbl-cap: Baseline GCN validation results for predicting log1p(FEMA IHP). Performance is summarized using validation RMSE and $R^2$.
+#| output: false
 
 gcn_baseline_summary = pd.DataFrame(
     {
@@ -1168,13 +1168,17 @@ best_dropout = float(
 base_gcn_config["dropout"] = best_dropout
 ```
 
+## GCN Experimental Results
+
+In the end, the ablation experiments identified the best GCN configuration using log-transformed features, the 2-layer with 128 hidden dimensions, dropout = 0.0, and weight decay = 1e-5. This model achieved the best validation performance (RMSE) and was selected as the graph-based benchmark for predicting `log1p(FEMA IHP)`. The final held-out test evaluation shows relatively lower predictive performance compared to the MLP, with test RMSE = 2.4050 and $R^2$ = 0.3829 as shown in Table 9.1 below.
+
+An important finding from the experimental results is the discrepancy in computational efficiency and convergence between the tabular and spatial architectures. The final MLP baseline, containing 12,417 trainable parameters, converged optimally at epoch 21. In contrast, the best-performing GCN model contained only 2,177 parameters but required the full 300 epochs to reach its best validation state. Despite having approximately 82% fewer parameters, the spatial model required substantially more training time and still underperformed the tabular baseline. This suggests that propagating features through the Queen contiguity graph introduced noise rather than predictive signal, forcing the network to optimize over a more complex, less informative loss landscape.
+
 # Final Model Comparisons
 
 @tbl-mlp-gcn-comparison and @fig-mlp-gcn-overall-comparison summarize the final held-out test performance of the final multilayer perceptron (MLP) baseline and the final graph convolutional network (GCN). For both models, the best-performing hyperparameter configuration identified during the ablation experiments was selected and then retrained using the full training data before being evaluated on the held-out test set. This ensures that the reported results reflect the strongest configuration discovered during model development while maintaining a strict separation between model selection and final evaluation.
 
-The MLP baseline uses a deeper fully connected architecture with hidden layers ([128, 64, 32]), resulting in **12,417 trainable parameters**. Training converged relatively quickly, stopping after **46 epochs**, with the best validation performance occurring at epoch 21. On the held-out test set, the MLP achieved a **test RMSE of 2.00** and an **$R^2$ of 0.571**, indicating that the model explains approximately **57% of the variance** in the log-transformed FEMA IHP outcome. These results suggest that nonlinear interactions among the SVI indicators provide meaningful predictive signal for disaster assistance outcomes.
-
-The GCN model, in contrast, incorporates spatial relationships between counties through a two-layer graph convolutional architecture with 128 hidden units and **2,177 trainable parameters**, substantially fewer than the MLP baseline. Despite this architectural efficiency, the GCN produced weaker predictive performance. Training ran for the full **300 epochs**, with the best validation performance occurring late in training at epoch 300. On the test set, the model achieved a **test RMSE of 2.40** and an **$R^2$ of 0.397**, explaining roughly **40% of the variance** in the target variable.
+On the held-out test set, the MLP achieved a **test RMSE of 2.00** and an **$R^2$ of 0.571**, indicating that the model explains approximately **57% of the variance** in the log-transformed FEMA IHP outcome. These results suggest that nonlinear interactions among the SVI indicators provide meaningful predictive signal for disaster assistance outcomes. On the test set, the model achieved a **test RMSE of 2.40** and an **$R^2$ of 0.397**, explaining roughly **40% of the variance** in the target variable.
 
 ```{python}
 # Best gcn config
@@ -1345,8 +1349,4 @@ ax1.legend(
 plt.tight_layout()
 plt.show()
 ```
-
-Overall, the **baseline MLP outperforms the spatial GCN model across all evaluation metrics**. The lower RMSE and higher $R^2$ indicate that the tabular MLP architecture captures the predictive structure of the SVI indicators more effectively than the spatial model under the current configuration. One possible explanation is that the county-level socioeconomic variables already encode much of the relevant variation in disaster assistance outcomes, leaving limited additional predictive value for spatial smoothing through graph convolutions. Additionally, the relatively sparse spatial signal in FEMA assistance distributions may reduce the benefits of neighborhood aggregation in the graph model.
-
-These findings highlight that while graph neural networks offer a principled mechanism for incorporating spatial structure, they do not automatically outperform well-tuned tabular models. In this case, the MLP baseline provides a stronger predictive benchmark and serves as an important reference point for evaluating the contribution of spatial modeling approaches.
 

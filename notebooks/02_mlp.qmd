@@ -6,6 +6,20 @@ jupyter: python3
 
 
 ```{python}
+import os
+import sys
+
+# Check if running in Google Colab
+if 'google.colab' in sys.modules:
+    # Clone your repository if it hasn't been cloned yet
+    if not os.path.exists('/content/svi-fema-spatial-graph-modeling'):
+        !git clone https://github.com/AnhJoe/svi-fema-spatial-graph-modeling.git
+    
+    # Change working directory to the project root
+    os.chdir('/content/svi-fema-spatial-graph-modeling')
+```
+
+```{python}
 #| output: false
 
 import sys
@@ -75,16 +89,23 @@ SEED = 42
 ```
 
 ```{python}
+# Data directories
+RAW_DATA_DIR = root / "data" / "raw"
+PROCESSED_DATA_DIR = root / "data" / "processed"
+ARTIFACT_DIR = root / "data" / "artifacts"
+SVI_PATH = RAW_DATA_DIR / "SVI_2018_US_county.csv"
+SHAPE_PATH = RAW_DATA_DIR / "tl_2018_us_county/tl_2018_us_county.shp"
+
 # Load data & artifacts
-geo_df = gpd.read_file("../data/processed/svi_counties.gpkg", layer="counties")
+geo_df = gpd.read_file(PROCESSED_DATA_DIR / "svi_counties.gpkg", layer="counties")
 
 # Do not change row indices beyond this
-X = pd.read_csv("../data/processed/X.csv")
-X_log = pd.read_csv("../data/processed/X_log.csv")
-y_log = pd.read_csv("../data/processed/y_log.csv")
-fips = pd.read_csv("../data/processed/fips.csv")["FIPS"].astype(str).str.zfill(5)
+X = pd.read_csv(PROCESSED_DATA_DIR / "X.csv")
+X_log = pd.read_csv(PROCESSED_DATA_DIR / "X_log.csv")
+y_log = pd.read_csv(PROCESSED_DATA_DIR / "y_log.csv")
+fips = pd.read_csv(PROCESSED_DATA_DIR / "fips.csv")["FIPS"].astype(str).str.zfill(5)
 
-with open("../data/processed/feature_titles.json") as f:
+with open(PROCESSED_DATA_DIR / "feature_titles.json") as f:
     feature_titles_log = json.load(f)
 ```
 
@@ -141,49 +162,31 @@ $$
 
 The baseline multilayer perceptron (MLP) uses a compact feedforward architecture designed to capture nonlinear relationships between county-level socioeconomic indicators and disaster assistance outcomes while remaining computationally simple and interpretable. The network consists of two hidden layers with the following structure:
 
-$$
-15 \rightarrow 64 \rightarrow 32 \rightarrow 1
-$$
+$15 \rightarrow 64 \rightarrow 32 \rightarrow 1$
 
-where the 15 input units correspond to the log-transformed **EP\_*** vulnerability indicators and the output layer predicts the log-transformed FEMA Individual Household Program (IHP) assistance amount. The SVI indicators are widely used to characterize community-level social vulnerability across socioeconomic, demographic, and housing dimensions (Flanagan et al., 2011; Centers for Disease Control and Prevention/Agency for Toxic Substances and Disease Registry [CDC/ATSDR], 2024).
+where the 15 input units correspond to the log-transformed vulnerability indicators and the output layer predicts the log-transformed FEMA Individual Household Program (IHP) assistance amount. 
 
 ### Training Configuration
 
-The MLP baseline is trained using the following optimization and training settings:
+The MLP baseline is trained using the following optimization and training settings prior to the ablation experiments:
 
-- **Optimizer:** Adam  
-- **Learning rate:** $(1 \times 10^{-3})$  
-- **Weight decay (L2 regularization):** $(1 \times 10^{-4})$  
-- **Maximum training epochs:** 300  
-- **Early stopping patience:** 25 epochs  
-- **Loss function:** Mean Squared Error (MSE)  
-- **Activation function:** ReLU  
-
-### Evaluation Metrics
-
-Models are compared primarily using root mean squared error (RMSE) on the validation set, with $R^2$ reported as a complementary measure of explained variance. After selecting the best configuration, the final model is evaluated once on the held-out test set to provide an unbiased estimate of generalization performance. These experiments establish a strong tabular benchmark before introducing spatial graph-based models.
+* **Optimizer:** Adam 
+* **Learning rate:** 1e-3
+* **Weight decay (L2 regularization):** 1e-4
+* **Maximum training epochs:** 300 
+* **Early stopping patience:** 25 epochs 
+* **Loss function:** Mean Squared Error (MSE) 
+* **Activation function:** ReLU 
 
 ## Ablation Plan
 
-A series of controlled ablation experiments are conducted to evaluate sensitivity to preprocessing, architecture, and regularization. Model selection and hyperparameter tuning are performed using the validation split only, while the held-out test split is reserved for the final evaluation. Each ablation varies a single design component while keeping the remaining settings fixed, allowing the effect of individual modeling choices to be isolated and interpreted.
+A series of controlled ablation experiments are conducted to evaluate sensitivity to preprocessing, architecture, and regularization. Model selection and hyperparameter tuning are performed using the validation split only and primarily evaluated on RMSE with $R^2$ as a complementary measure of explained variance. The held-out test split is reserved for the final evaluation. Each ablation varies a single design component while keeping the remaining settings fixed, allowing the effect of individual modeling choices to be isolated and interpreted.
 
-### Feature Representations
-
-Two feature representations are evaluated: a standardized raw indicator set and a standardized log-transformed indicator set (for a subset of variables identified during the exploratory data analysis). Many socioeconomic indicators exhibit strong right-skewed distributions due to the presence of highly heterogeneous county populations and extreme values. Log transformation reduces this skewness and compresses large values, potentially stabilizing gradients during training and improving the ability of the network to learn meaningful relationships between predictors and disaster assistance outcomes.
-
-Comparing these two representations allows the experiments to assess whether distributional normalization of the SVI indicators improves predictive performance and model stability. The transformation choice is therefore treated as a preprocessing ablation rather than a fixed assumption.
-
-### Network Capacity
-
-Network capacity is evaluated by comparing the baseline architecture with deeper variants that increase both the width and depth of hidden layers. Increasing hidden-layer width allows the network to learn a richer set of nonlinear feature interactions, while increasing depth enables hierarchical feature transformations across multiple layers.
-
-However, larger architectures may also increase the risk of overfitting, particularly when the number of counties is limited relative to the number of model parameters. Evaluating multiple architectures therefore helps determine whether additional capacity improves predictive accuracy or whether a smaller model provides a better balance between flexibility and generalization.
-
-### Regularization
-
-Additional experiments examine the effects of dropout and weight decay to identify a configuration that balances predictive accuracy and model stability. Dropout introduces stochastic noise during training by randomly deactivating hidden units, which can help prevent co-adaptation among neurons and improve generalization. Weight decay provides L2 regularization by penalizing large parameter values during optimization, encouraging smoother model solutions.
-
-These regularization mechanisms are evaluated across a range of values to determine whether the model benefits more from explicit parameter constraints or stochastic regularization. The goal of this ablation stage is to identify a configuration that produces stable learning dynamics while maintaining strong predictive performance on the validation set.
+* **Log-1p vs. raw feature matrix**
+* **Network width & depth:** 64, 128, 256
+* **Regularization:**
+    * **Weight decay:** 0.0, 1e-3, and 1e-5
+    * **Dropout:** 0.0, 0.1, and 0.3
 
 ```{python}
 # Split X and y with fips to maintain row indices for downstream GCN models
@@ -327,7 +330,7 @@ display(tensor_shapes.style.hide(axis="index"))
 
 ### Feature Representation Ablation
 
-The dataset was partitioned into train, validation, and test splits of 2,198, 471, and 472 counties respectively, with a batch size of 64 across both pipelines (@tbl-mlp-dataloader-summary). Both pipelines used the same baseline MLP architecture consisting of two hidden layers (64 → 32) with ReLU activations and light dropout regularization (@tbl-mlp-architecture). The model predicts a single continuous outcome: the log-transformed FEMA disaster assistance amount, $\log(1 + \text{FEMA IHP})$. This formulation treats the task as a regression problem, allowing the network to learn nonlinear relationships between the SVI indicators and observed disaster assistance outcomes.
+The dataset was partitioned into train, validation, and test splits of 2,198, 471, and 472 counties respectively, with a batch size of 64 across both pipelines (@tbl-mlp-dataloader-summary). Both pipelines used the same baseline MLP architecture consisting of two hidden layers (64 → 32) with ReLU activations and light dropout regularization. The model predicts a single continuous outcome: the log-transformed FEMA disaster assistance amount. This formulation treats the task as a regression problem, allowing the network to learn nonlinear relationships between the SVI indicators and observed disaster assistance outcomes.
 
 ```{python}
 #| label: tbl-mlp-dataloader-summary
@@ -425,6 +428,7 @@ display(runtime_config.style.hide(axis="index"))
 ```{python}
 #| label: tbl-mlp-architecture
 #| tbl-cap: Baseline MLP architectures for the raw-feature and log-transformed-feature pipelines.
+#| output: false
 
 mlp_raw = FlexibleMLP(
     input_dim=Xraw_train_t.shape[1],
@@ -614,13 +618,12 @@ overall_raw = evaluate_regression(ylog_val_true, ylog_pred_raw)
 overall_log = evaluate_regression(ylog_val_true, ylog_pred_log)
 ```
 
-The validation metrics support the use of the log-transformed feature pipeline. As shown in @tbl-mlp-val-metrics-overall, the model trained on log-transformed features achieved a lower RMSE (1.913993 vs. 2.043005) and higher R² (0.589123 vs. 0.531866) than the raw-feature pipeline. These results indicate modest but consistent performance improvements when using the transformed feature representation.
-
 ```{python}
 #| label: tbl-mlp-val-metrics-overall
 #| tbl-cap: Validation-set regression metrics comparing the raw-feature and log-transformed-feature baseline MLP pipelines for predicting log1p(FEMA IHP). Metrics include RMSE and R² to summarize prediction error and variance explained.
 
 rows = []
+
 
 rows.append({
     "Metric": "RMSE",
@@ -704,11 +707,12 @@ Taken together, the feature ablation indicates that the log-transformed feature 
 
 ## Architecture Ablation
 
-To examine the role of model capacity, an architecture ablation was conducted comparing three MLP configurations of increasing depth and width: the current baseline architecture (64 → 32), a Deep-128 architecture (128 → 64 → 32), and a Deep-256 architecture (256 → 128 → 64 → 32) (@tbl-mlp-architecture-ablation-config).
+To examine the role of model capacity, an architecture ablation was conducted comparing three MLP configurations of increasing depth and width: the current baseline architecture (64 → 32), a Deep-128 architecture (128 → 64 → 32), and a Deep-256 architecture (256 → 128 → 64 → 32).
 
 ```{python}
 #| label: tbl-mlp-architecture-ablation-config
 #| tbl-cap: Architecture configurations used in the MLP ablation study. The baseline, deep-128, and deep-256 variants are evaluated using both standardized raw and log-transformed features.
+#| output: false
 
 architecture_configs = {
     "Baseline (64)": [64, 32],
@@ -937,19 +941,18 @@ plt.tight_layout()
 plt.show()
 ```
 
-From a modeling perspective, these results suggest that county-level disaster assistance prediction benefits from moderately deep neural networks capable of capturing nonlinear relationships among vulnerability indicators. However, increasing model capacity beyond this point does not improve validation performance. The **Deep-128 architecture with log-transformed features** therefore provides the best balance between representational capacity and generalization.
-
 ## Regularization Ablation
 
 The last ablation study was conducted to examine the impact of regularization on model generalization. Two forms of regularization were evaluated independently: **dropout** and **weight decay**. In both experiments the architecture, optimizer, and training schedule were held fixed to isolate the effect of the regularization mechanism itself.
 
 ### Dropout Ablation
 
-The first experiment evaluated the effect of **dropout strength** within the Deep-128 network. Three dropout values were tested—**0.0, 0.1, and 0.3** while keeping all other training settings constant (@tbl-mlp-dropout-ablation-config). Each configuration was trained using both the raw and log-transformed pipelines.
+The first experiment evaluated the effect of **dropout strength** within the Deep-128 network. Three dropout values were tested—**0.0, 0.1, and 0.3** while keeping all other training settings constant. Each configuration was trained using both the raw and log-transformed pipelines.
 
 ```{python}
 #| label: tbl-mlp-dropout-ablation-config
 #| tbl-cap: Dropout configurations used in the MLP regularization ablation study. The Deep-128 architecture is held fixed while dropout strength is varied to evaluate its effect on generalization for both standardized raw and log-transformed features.
+#| output: false
 
 dropout_configs = [0.0, 0.1, 0.3]
 dropout_hidden_dims = [128, 64, 32]
@@ -1193,7 +1196,7 @@ Overall, these results indicate that light regularization provides the best bala
 
 ### Weight Decay Ablation
 
-After determining that dropout was unnecessary, the second regularization experiment evaluated L2 weight decay while keeping dropout fixed at 0.0. Three weight decay values were tested—**0.0, 1e-3, and 1e-5**—using the same architecture and training settings (@tbl-mlp-weight-decay-ablation-config).
+The second regularization experiment evaluated L2 weight decay while keeping dropout fixed. Three weight decay values were tested—**0.0, 1e-3, and 1e-5**—using the same architecture and training settings.
 
 ```{python}
 #| label: tbl-mlp-weight-decay-ablation-config
@@ -1412,8 +1415,6 @@ plt.tight_layout()
 plt.show()
 ```
 
-After completing the architecture and regularization ablation experiments, the final MLP configuration selected for evaluation uses log-transformed features, the Deep-128 architecture ([128, 64, 32]), dropout = 0.1, and weight decay = 1e-5. As summarized in @tbl-mlp-best-config-summary, this configuration achieves the best validation performance among the tested models, with **validation RMSE = 1.9161** and **validation $R^2$ = 0.5882** when predicting log1p(FEMA IHP). These results indicate that moderate network capacity combined with light regularization provides the best balance between model flexibility and generalization for this task.
-
 ```{python}
 #| label: tbl-mlp-best-config-summary
 #| tbl-cap: Best-performing MLP configuration identified from the architecture and regularization ablations. The selected model uses log-transformed features with the Deep-128 architecture, dropout = 0.1, and weight decay = 1e-5. Metrics shown here are validation-set results used for model selection.
@@ -1452,13 +1453,15 @@ best_mlp_config = pd.DataFrame({
 display(best_mlp_config.style.hide(axis="index"))
 ```
 
-## MLP Summary
+## MLP Experimental Results
 
-The ablation experiments identified a final MLP configuration using log-transformed features, the Deep-128 architecture ([128, 64, 32]), dropout = 0.1, and weight decay = 1e-5. This model achieved the best validation performance and was selected as the tabular benchmark for predicting log1p(FEMA IHP).
+In the end, the ablation experiments identified a final MLP configuration using log-transformed features, the Deep-128 architecture ([128, 64, 32]), dropout = 0.1, and weight decay = 1e-5. This model achieved the best validation performance and was selected as the tabular benchmark for predicting `log1p(FEMA IHP)`.
 
-The final held-out evaluation shows moderate predictive performance, with **test RMSE = 2.0048** and **$R^2 = 0.5712$** (@tbl-final-mlp-test-evaluation). These results indicate that county-level SVI indicators explain a meaningful portion of the variation in FEMA disaster assistance, but they do not fully capture disaster outcomes. This is expected because assistance levels depend not only on social vulnerability but also on hazard exposure, disaster severity, and federal response dynamics.
+The final held-out test evaluation shows moderate predictive performance, with test RMSE = 2.0048 and $R^2$ = 0.5712. These results indicate that county-level SVI indicators explain a meaningful portion of the variation in FEMA disaster assistance, but they do not fully capture disaster outcomes. This is expected because assistance levels depend not only on social vulnerability but also on hazard exposure, disaster severity, and federal response dynamics.
 
 Importantly, the MLP treats counties as independent observations, relying only on tabular socioeconomic indicators. However, the exploratory analysis earlier in this study revealed strong **geographic clustering in both vulnerability and disaster assistance patterns**. Because neighboring counties often experience similar hazards and share regional socioeconomic conditions, incorporating spatial relationships may provide additional predictive signal. This motivates the transition to **graph-based models**, which represent counties as nodes in a spatial network and allow information to propagate between neighboring regions during learning.
+
+
 
 ```{python}
 #| label: tbl-final-mlp-test-evaluation
@@ -1530,14 +1533,12 @@ display(final_mlp_results.T.style.hide(axis="columns"))
 ```{python}
 #| output: false
 
-processed_dir = Path("../data/processed")
-processed_dir.mkdir(parents=True, exist_ok=True)
-
-artifact_dir = Path("../data/artifacts")
-artifact_dir.mkdir(parents=True, exist_ok=True)
+# Ensure the output directories exist
+PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
 np.savez(
-    processed_dir / "svi_processed_splits.npz",
+    PROCESSED_DATA_DIR / "svi_processed_splits.npz",
 
     # Raw feature pipeline
     X_train_scaled=X_train_scaled,
@@ -1561,10 +1562,11 @@ np.savez(
 )
 
 # Save scalers for inverse transforms
-joblib.dump(scaler_Xlog, processed_dir / "scaler_Xlog.pkl")
-joblib.dump(scaler_ylog, processed_dir / "scaler_ylog.pkl")
+joblib.dump(scaler_Xlog, PROCESSED_DATA_DIR / "scaler_Xlog.pkl")
+joblib.dump(scaler_ylog, PROCESSED_DATA_DIR / "scaler_ylog.pkl")
 
 # Save final MLP artifact for GCN comparisons
-final_mlp_results.to_csv(artifact_dir / "final_mlp_results.csv", index=False)
+final_mlp_results.to_csv(ARTIFACT_DIR / "final_mlp_results.csv", index=False)
 ```
+
 

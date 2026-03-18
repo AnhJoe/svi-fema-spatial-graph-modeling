@@ -1,5 +1,5 @@
 ---
-title: Data Processing
+title: Data Preprocessing
 jupyter: python3
 ---
 
@@ -14,6 +14,20 @@ Following the FEMA merge, county geometries were attached using a county boundar
 
 At the conclusion of these preprocessing steps, each county in the analytic dataset contains a consistent geographic identifier, a set of SVI vulnerability indicators, aggregated FEMA IHP disaster assistance totals for the 2018–2020 period, and the county geometry required for constructing spatial adjacency relationships. This processed dataset forms the basis for the feature matrix and target variable used in the subsequent EDA and modeling stages.
 
+
+```{python}
+import os
+import sys
+
+# Check if running in Google Colab
+if 'google.colab' in sys.modules:
+    # Clone your repository if it hasn't been cloned yet
+    if not os.path.exists('/content/svi-fema-spatial-graph-modeling'):
+        !git clone https://github.com/AnhJoe/svi-fema-spatial-graph-modeling.git
+    
+    # Change working directory to the project root
+    os.chdir('/content/svi-fema-spatial-graph-modeling')
+```
 
 ```{python}
 #| output: false
@@ -83,11 +97,33 @@ plt.rcParams.update(
 ```{python}
 #| output: false
 
+import sys
+import zipfile
+
 # Data directories
-RAW_DATA_DIR = Path("../data/raw")
-PROCESSED_DATA_DIR = Path("../data/processed")
+RAW_DATA_DIR = root / "data" / "raw"
+PROCESSED_DATA_DIR = root / "data" / "processed"
 SVI_PATH = RAW_DATA_DIR / "SVI_2018_US_county.csv"
 SHAPE_PATH = RAW_DATA_DIR / "tl_2018_us_county/tl_2018_us_county.shp"
+
+# Conditionally download data if running in Colab and data is missing
+if 'google.colab' in sys.modules:
+    if not SVI_PATH.exists() or not SHAPE_PATH.exists():
+        print("Running in Colab: Downloading raw data from Google Drive...")
+        import gdown
+        RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Google Drive File ID extracted from the share link
+        file_id = '1QiZxOxjk8HeZKvvPEGb9MHQEstDKK55r'
+        zip_path = RAW_DATA_DIR / 'raw_data.zip'
+        
+        # Download using gdown
+        gdown.download(id=file_id, output=str(zip_path), quiet=False)
+        
+        print("Extracting data...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(RAW_DATA_DIR)
+        print("Extraction complete.")
 
 # Load svi.csv
 svi = pd.read_csv(SVI_PATH)
@@ -99,8 +135,9 @@ counties = gpd.read_file(SHAPE_PATH)
 ```{python}
 #| output: false
 
-# OPTION A: RUN THIS TO LOAD FROM API (THIS WILL TAKE A LONG TIME)
-# OPTION B: DOWNLOAD DIRECTLY FROM GOOGLE DRIVE ZIP FILE & PLACE INTO DATA/RAW: 
+# OPTION A: UNCOMMENT & RUN THIS TO LOAD FROM API (THIS WILL TAKE A LONG TIME)
+# OPTION B: MANUALLY DOWNLOAD DIRECTLY FROM GOOGLE DRIVE ZIP FILE & PLACE INTO DATA/RAW: 
+# OPTION C: USE GOOGLE COLLAB TO DOWNLOAD DIRECTLY FROM THE ZIP FILE
 
 # OPTION A: Load FEMA 2018-2020 target from OpenFEMA API
 # BASE_URL = "https://www.fema.gov/api/open/v2/IndividualsAndHouseholdsProgramValidRegistrations"
@@ -169,6 +206,8 @@ fema = fema.drop(columns=["declarationDate", "disaster_count"], errors="ignore")
 
 # Fill missing with 0s
 fema["ihpAmount"] = pd.to_numeric(fema["ihpAmount"], errors="coerce").fillna(0)
+fema["fips"] = pd.to_numeric(fema["fips"], errors="coerce")
+fema = fema.dropna(subset=["fips"]).copy()
 
 # Aggregate by county fips
 fema_county = (
@@ -182,12 +221,12 @@ fema_county = (
 # Standardize FIPS
 fema_county["fips"] = (
     fema_county["fips"]
-    .astype(float)
     .astype(int)
     .astype(str)
     .str.zfill(5)
 )
 
+PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 FEMA_PROCESSED_PATH = PROCESSED_DATA_DIR / "fema_ihp_2018_2020_county.csv"
 
 fema_county.to_csv(FEMA_PROCESSED_PATH, index=False)
@@ -1286,24 +1325,26 @@ Principal component analysis and K-means clustering further reveal structured pa
 Finally, the geographic distribution of cluster assignments shows clear spatial coherence, with neighboring counties often sharing similar vulnerability profiles. This spatial organization suggests that vulnerability is influenced by regional socioeconomic structures rather than isolated local conditions. Together, these findings support the modeling strategy adopted in this study: using the transformed EP_* indicators as predictors while allowing ML models—particularly graph-based approaches—to capture nonlinear feature interactions and spatial dependencies across counties.
 
 ```{python}
+# Ensure the output directory exists before saving files
+PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
 # Save spatial dataset
 geo_df.to_file(
-    "../data/processed/svi_counties.gpkg",
+    PROCESSED_DATA_DIR / "svi_counties.gpkg",
     layer="counties",
     driver="GPKG"
 )
 
 # Save model matrices
-X.to_csv("../data/processed/X.csv", index=False)
-X_log.to_csv("../data/processed/X_log.csv", index=False)
-y_log.to_csv("../data/processed/y_log.csv", index=False)
+X.to_csv(PROCESSED_DATA_DIR / "X.csv", index=False)
+X_log.to_csv(PROCESSED_DATA_DIR / "X_log.csv", index=False)
+y_log.to_csv(PROCESSED_DATA_DIR / "y_log.csv", index=False)
 
 # Save county identifiers
-geo_df[["FIPS"]].to_csv("../data/processed/fips.csv", index=False)
+geo_df[["FIPS"]].to_csv(PROCESSED_DATA_DIR / "fips.csv", index=False)
 
 # Save feature titles as JSON
-with open("../data/processed/feature_titles.json", "w") as f:
+with open(PROCESSED_DATA_DIR / "feature_titles.json", "w") as f:
     json.dump(feature_titles_log, f, indent=2)
 ```
-
 
