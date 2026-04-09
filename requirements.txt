@@ -1,4 +1,4 @@
-# Core data science libraries
+# Core libraries
 numpy
 pandas
 
